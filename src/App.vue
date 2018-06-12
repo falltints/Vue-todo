@@ -13,8 +13,10 @@ export default {
 </script>
 <style>
 #test {
-    color: darkcyan;
-    font-size: 20px;
+    color: white;
+    font-size: 30px;
     text-align: center;
+    font-family: "Lucida Handwriting";
+    letter-spacing: 3px;
 }
 </style>
