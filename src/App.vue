@@ -6,6 +6,7 @@
         <Footer></Footer>
     </div>
 </template>
+
 <script>
 import Header from './todo/Header.vue'
 import Footer from './todo/Footer.jsx'
@@ -18,6 +19,7 @@ export default {
     }
 }
 </script>
+
 <style type="text/stylus" scoped lang="stylus">
 #app
     position absolute
@@ -26,7 +28,7 @@ export default {
     top 0
     bottom 0
     .cover
-        position absolute
+        position absolute // 脱离文档流
         left 0
         top 0
         right 0
