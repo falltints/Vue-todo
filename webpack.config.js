@@ -2,6 +2,8 @@ const path = require('path');
 const HTMLPlugin = require('html-webpack-plugin');
 // HTMLPlugin会自动生成一个html文件，并且引用相关的 assets 文件(如 css, js)
 const webpack = require('webpack');
+const extractPlugin = require('extract-text-webpack-plugin');
+// 把静态资源文件单独打包
 
 const isDev = process.env.NODE_ENV === 'development'; // 判断是否为开发环境
 
@@ -9,7 +11,7 @@ const config = {
     target: 'web',
     entry: path.join(__dirname, 'src/index.js'),
     output: {
-        filename: 'bundle.js',
+        filename: 'bundle.[hash:8].js',
         path: path.join(__dirname, 'dist')
     },
     // webpack会把所有需要的文件（.vue, .css, .js等）打包到一个js文件中
@@ -23,9 +25,6 @@ const config = {
             // 在render方法中写虚拟DOM
             loader: 'babel-loader' // babel用来将es6代码转换成浏览器能够识别的代码
         }, {
-            test: /\.css$/,
-            use: ['style-loader', 'css-loader']
-        }, {
             test: /\.(jpg|png|gif|svg|jpeg)$/,
             use: [{
                 loader: 'url-loader',
@@ -35,21 +34,6 @@ const config = {
                     name: '[name].[ext]', // ext为扩展名
                 }
             }]
-        }, {
-            test: /\.styl$/,
-            use: [
-                'style-loader',
-                'css-loader',
-                {
-                    loader: 'postcss-loader',
-                    options: {
-                        // Source Maps能够提供将压缩文件恢复到源文件原始位置的映射代码的方式。方便开发时调试。
-                        sourceMap: true
-                        // 因为stylus-loader会生成sourceMap，这里设为true可以直接利用stylus-loader生成的sourceMap
-                    }
-                },
-                'stylus-loader'
-            ]
         }]
     },
     plugins: [
@@ -78,7 +62,62 @@ if (isDev) {
     config.plugins.push(
         new webpack.HotModuleReplacementPlugin(),
         new webpack.NoEmitOnErrorsPlugin()
-    )
+    );
+    config.module.rules.push({
+        test: /\.styl$/,
+        use: [
+            'style-loader',
+            'css-loader',
+            {
+                loader: 'postcss-loader',
+                options: {
+                    // Source Maps能够提供将压缩文件恢复到源文件原始位置的映射代码的方式。方便开发时调试。
+                    sourceMap: true
+                    // 因为stylus-loader会生成sourceMap，这里设为true可以直接利用stylus-loader生成的sourceMap
+                }
+            },
+            'stylus-loader'
+        ]
+    })
+} else {
+    config.module.rules.push({
+        test: /\.styl$/,
+        use: extractPlugin.extract({
+            fallback: 'style-loader', // fallback意为退路
+            // extract默认行为先使用css-loader编译css，如果一切顺利的话，结束之后把css导出到规定的文件去。
+            // 但是如果编译过程中出现了错误，则继续使用style-loader处理css。
+            use: [
+                'css-loader',
+                {
+                    loader: 'postcss-loader',
+                    options: {
+                        // Source Maps能够提供将压缩文件恢复到源文件原始位置的映射代码的方式。方便开发时调试。
+                        sourceMap: true
+                        // 因为stylus-loader会生成sourceMap，这里设为true可以直接利用stylus-loader生成的sourceMap
+                    }
+                },
+                'stylus-loader'
+            ]
+        })
+    });
+    config.output.filename = '[name].[chunkhash:8].js';
+    // hash的应用：利用浏览器的长缓存来减少资源的加载速度
+    // hash与chunkhash的区别：hash是对整个项目的一个命名，chunkhash会对单独的每一个模块都进行命名
+    config.entry = {
+        app: path.join(__dirname, 'src/index.js'),
+        vendor: ['vue'] // vendor: 供应商
+    };
+    config.plugins.push(
+        new extractPlugin('style.[contentHash:8].css'),
+        // 对类库文件进行单独打包
+        new webpack.optimize.CommonsChunkPlugin({
+            name: 'vendor'
+        }),
+        // 把webpack相关代码进行打包
+        new webpack.optimize.CommonsChunkPlugin({
+            name: 'runtime'
+        })
+    );
 }
 
 module.exports = config;
